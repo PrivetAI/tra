@@ -1,0 +1,148 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    image: node:20-alpine
+    working_dir: /app
+    command: >-
+      sh -c "(apk add --no-cache ffmpeg yt-dlp || (apk add --no-cache ffmpeg && wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp)) \
+      && npm install \
+      && npm run dev"
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/videoharvester
+      - REDIS_URL=redis://redis:6379
+      - DOWNLOADS_DIR=/downloads
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - TIKTOK_SCRAPER_URL=http://tiktok-scraper:8000
+      - INSTAGRAM_SCRAPER_URL=http://instagram-scraper:8001
+      - LOG_LEVEL=info
+      - NODE_ENV=development
+      - NPM_CONFIG_PRODUCTION=false
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - api-node-modules:/app/node_modules
+      - downloads:/downloads
+
+  worker-youtube:
+    image: node:20-alpine
+    working_dir: /app
+    command: >-
+      sh -c "(apk add --no-cache ffmpeg yt-dlp || (apk add --no-cache ffmpeg && wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp)) \
+      && npm install \
+      && npx ts-node-dev --respawn --transpile-only src/workers/youtube.ts"
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/videoharvester
+      - REDIS_URL=redis://redis:6379
+      - DOWNLOADS_DIR=/downloads
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - LOG_LEVEL=info
+      - NODE_ENV=development
+      - NPM_CONFIG_PRODUCTION=false
+    volumes:
+      - ./backend:/app
+      - worker-youtube-node-modules:/app/node_modules
+      - downloads:/downloads
+
+  worker-tiktok:
+    image: node:20-alpine
+    working_dir: /app
+    command: >-
+      sh -c "(apk add --no-cache ffmpeg yt-dlp || (apk add --no-cache ffmpeg && wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp)) \
+      && npm install \
+      && npx ts-node-dev --respawn --transpile-only src/workers/tiktok.ts"
+    depends_on:
+      - mongo
+      - redis
+      - tiktok-scraper
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/videoharvester
+      - REDIS_URL=redis://redis:6379
+      - DOWNLOADS_DIR=/downloads
+      - TIKTOK_SCRAPER_URL=http://tiktok-scraper:8000
+      - LOG_LEVEL=info
+      - NODE_ENV=development
+      - NPM_CONFIG_PRODUCTION=false
+    volumes:
+      - ./backend:/app
+      - worker-tiktok-node-modules:/app/node_modules
+      - downloads:/downloads
+
+  worker-instagram:
+    image: node:20-alpine
+    working_dir: /app
+    command: >-
+      sh -c "(apk add --no-cache ffmpeg yt-dlp || (apk add --no-cache ffmpeg && wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp)) \
+      && npm install \
+      && npx ts-node-dev --respawn --transpile-only src/workers/instagram.ts"
+    depends_on:
+      - mongo
+      - redis
+      - instagram-scraper
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/videoharvester
+      - REDIS_URL=redis://redis:6379
+      - DOWNLOADS_DIR=/downloads
+      - INSTAGRAM_SCRAPER_URL=http://instagram-scraper:8001
+      - LOG_LEVEL=info
+      - NODE_ENV=development
+      - NPM_CONFIG_PRODUCTION=false
+    volumes:
+      - ./backend:/app
+      - worker-instagram-node-modules:/app/node_modules
+      - downloads:/downloads
+
+  tiktok-scraper:
+    build: ./scrapers/tiktok
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  instagram-scraper:
+    build: ./scrapers/instagram
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install; npm run dev -- --host 0.0.0.0"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+      - VITE_POLL_INTERVAL_MS=2000
+      - NPM_CONFIG_PRODUCTION=false
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+
+volumes:
+  mongo-data:
+  downloads:
+  api-node-modules:
+  worker-youtube-node-modules:
+  worker-tiktok-node-modules:
+  worker-instagram-node-modules:
