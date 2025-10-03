@@ -39,7 +39,7 @@ services:
     volumes:
       - ./backend:/app
       - api-node-modules:/app/node_modules
-      - downloads:/downloads
+      - ./downloads:/downloads
 
   worker-youtube:
     image: node:20-alpine
@@ -62,7 +62,7 @@ services:
     volumes:
       - ./backend:/app
       - worker-youtube-node-modules:/app/node_modules
-      - downloads:/downloads
+      - ./downloads:/downloads
 
   worker-tiktok:
     image: node:20-alpine
@@ -86,7 +86,7 @@ services:
     volumes:
       - ./backend:/app
       - worker-tiktok-node-modules:/app/node_modules
-      - downloads:/downloads
+      - ./downloads:/downloads
 
   worker-instagram:
     image: node:20-alpine
@@ -110,7 +110,7 @@ services:
     volumes:
       - ./backend:/app
       - worker-instagram-node-modules:/app/node_modules
-      - downloads:/downloads
+      - ./downloads:/downloads
 
   tiktok-scraper:
     build: ./scrapers/tiktok
@@ -141,7 +141,6 @@ services:
 
 volumes:
   mongo-data:
-  downloads:
   api-node-modules:
   worker-youtube-node-modules:
   worker-tiktok-node-modules:

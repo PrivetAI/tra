@@ -20,8 +20,8 @@ tasksRouter.post('/create/:platform', async (req, res) => {
     if (!['search', 'trends'].includes(mode)) {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid mode' } });
     }
-    if (typeof count !== 'number' || count < 1 || count > 10) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'count must be 1..10' } });
+    if (typeof count !== 'number' || count < 1 || count > 100) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'count must be 1..100' } });
     }
     const taskId = uuidv4();
     const task = await TaskModel.create({
@@ -35,7 +35,7 @@ tasksRouter.post('/create/:platform', async (req, res) => {
     });
 
     const data: SearchJobData = { taskId, mode, keywords, regionCode: regionCode ?? null, count };
-    await queues[platform].add('searchTask', data, { attempts: 3, backoff: { type: 'exponential', delay: 1000 } });
+    await queues[platform].add('searchTask', data);
     await appendTaskLog(taskId, 'info', `Задача создана: ${platform} mode=${mode} count=${count} region=${regionName ?? 'Глобально'}`);
 
     res.json({ taskId: task.taskId, platform: task.platform, status: task.status });

@@ -12,7 +12,6 @@ export default function App() {
 
   return (
     <Box sx={{ py: 3 }}>
-      <Typography variant="h4" gutterBottom>VideoHarvester</Typography>
       <Grid container spacing={2}>
         {columns.map((p) => (
           <Grid item xs={12} md={4} key={p}>

@@ -11,6 +11,9 @@ export const videosRouter = Router();
 
 videosRouter.get('/:platform/:videoId/download', async (req, res) => {
   try {
+    if (!config.downloadsEnabled) {
+      return res.status(403).json({ error: { code: 'DOWNLOADS_DISABLED', message: 'Downloading disabled by configuration' } });
+    }
     const platform = req.params.platform as Platform;
     const { videoId } = req.params;
     const video = await VideoModel.findOne({ platform, platformVideoId: videoId });
